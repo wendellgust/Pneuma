@@ -1,0 +1,9 @@
+Pneuma
+Copyright 2026 wendellgust
+
+Licensed under the Apache License, Version 2.0.
+
+Pneuma downloads and runs third-party tools at the user's request
+(avr-gcc, avrdude and the Arduino AVR core from the Arduino package index;
+optionally arduino-cli). They are not part of this repository and keep their
+own licenses (GPL/LGPL/etc.). Pneuma only invokes them as separate programs.

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" width="1280" height="320" role="img" aria-label="Pneuma: build, upload and monitor microcontrollers">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#25226b"/>
+    </linearGradient>
+    <linearGradient id="ac" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="320" rx="28" fill="url(#bg)"/>
+  <!-- faint circuit traces -->
+  <g fill="none" stroke="#22d3ee" stroke-opacity=".12" stroke-width="3" stroke-linecap="round">
+    <path d="M700 40H900V90H1010"/><path d="M760 280H960V230H1090V190"/><path d="M1000 40H1180V120"/>
+    <path d="M820 150H940"/><path d="M1100 280H1240"/>
+  </g>
+  <g fill="#22d3ee" fill-opacity=".25"><circle cx="1010" cy="90" r="6"/><circle cx="1090" cy="190" r="6"/><circle cx="1180" cy="120" r="6"/><circle cx="940" cy="150" r="6"/></g>
+  <!-- logo -->
+  <g transform="translate(60 52) scale(.84)">
+    <path d="M34 92 C58 38 160 22 222 70" fill="none" stroke="url(#ac)" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+    <path d="M222 164 C198 218 96 234 34 186" fill="none" stroke="url(#ac)" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+    <g stroke="url(#ac)" stroke-width="8" stroke-linecap="round">
+      <path d="M70 108H88M70 128H88M70 148H88"/><path d="M168 108H186M168 128H186M168 148H186"/>
+      <path d="M108 70V88M128 70V88M148 70V88"/><path d="M108 168V186M128 168V186M148 168V186"/>
+    </g>
+    <rect x="88" y="88" width="80" height="80" rx="14" fill="#0b1020" stroke="url(#ac)" stroke-width="8"/>
+    <path d="M113 150V106H131A17 17 0 0 1 131 140H113" fill="none" stroke="url(#ac)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="330" y="165" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="112" font-weight="700" fill="#ffffff" letter-spacing="2">Pneuma</text>
+  <text x="334" y="215" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="30" fill="#c7d2fe">Build · Upload · Monitor — breathe life into your microcontroller</text>
+  <g font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" font-weight="600">
+    <rect x="334" y="244" width="92" height="38" rx="19" fill="#22d3ee" fill-opacity=".16" stroke="#22d3ee" stroke-opacity=".6"/><text x="380" y="270" text-anchor="middle" fill="#a5f3fc">AVR</text>
+    <rect x="440" y="244" width="116" height="38" rx="19" fill="#a78bfa" fill-opacity=".16" stroke="#a78bfa" stroke-opacity=".6"/><text x="498" y="270" text-anchor="middle" fill="#ddd6fe">ESP32</text>
+    <rect x="570" y="244" width="136" height="38" rx="19" fill="#22d3ee" fill-opacity=".16" stroke="#22d3ee" stroke-opacity=".6"/><text x="638" y="270" text-anchor="middle" fill="#a5f3fc">ESP8266</text>
+    <rect x="720" y="244" width="124" height="38" rx="19" fill="#a78bfa" fill-opacity=".16" stroke="#a78bfa" stroke-opacity=".6"/><text x="782" y="270" text-anchor="middle" fill="#ddd6fe">RP2040</text>
+  </g>
+</svg>

@@ -1,0 +1,8 @@
+target/
+.pneuma/
+.bmu/
+logs/
+*.vsix
+node_modules/
+CLAUDEDOING.md
+TESTING.md

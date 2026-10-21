@@ -1,0 +1,200 @@
+'use strict';
+const vscode = require('vscode');
+const cp = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const lib = require('./lib');
+
+const state = { info: { ok: false, envs: [], ports: [], remembered: {} }, env: null, port: 'auto', bin: null };
+const items = {};
+let terminals = [];
+
+function root() {
+  const f = vscode.workspace.workspaceFolders;
+  return f && f.length ? f[0].uri.fsPath : null;
+}
+
+function binary(interactive = true) {
+  const setting = vscode.workspace.getConfiguration('pneuma').get('path');
+  const bin = lib.resolveBinary({
+    setting,
+    pathEnv: process.env.PATH,
+    home: os.homedir(),
+    exists: (p) => {
+      try {
+        return fs.statSync(p).isFile();
+      } catch (e) {
+        return false;
+      }
+    },
+    platform: process.platform,
+  });
+  if (!bin && interactive) {
+    vscode.window.showErrorMessage('Pneuma binary not found. Build it (cargo install --path crates/pneuma-cli) or set "pneuma.path".', 'Open settings').then((c) => {
+      if (c) vscode.commands.executeCommand('workbench.action.openSettings', 'pneuma.path');
+    });
+  }
+  state.bin = bin;
+  return bin;
+}
+
+function currentEnv() {
+  return lib.chooseEnv(state.info, state.env, state.port);
+}
+
+function updateStatus() {
+  const show = vscode.workspace.getConfiguration('pneuma').get('statusBar') !== false;
+  const t = lib.statusTexts(state.info, currentEnv(), state.port);
+  items.env.text = t.env;
+  items.env.tooltip = t.envTip;
+  items.port.text = t.port;
+  items.port.tooltip = 'Serial port — click to change';
+  for (const it of Object.values(items)) (show && state.info.ok ? it.show() : it.hide());
+  vscode.commands.executeCommand('setContext', 'pneuma.active', state.info.ok);
+}
+
+function refresh() {
+  return new Promise((resolve) => {
+    const r = root();
+    const bin = r && binary(false);
+    if (!r || !bin) {
+      state.info = { ok: false, error: r ? 'pneuma binary not found' : 'no folder open', envs: [], ports: [], remembered: {} };
+      updateStatus();
+      return resolve(state.info);
+    }
+    cp.execFile(bin, ['info', r], { cwd: r, timeout: 15000 }, (err, stdout) => {
+      state.info = lib.parseInfo(err && !stdout ? String(err) : stdout);
+      updateStatus();
+      resolve(state.info);
+    });
+  });
+}
+
+function taskFor(command, def = {}) {
+  const r = root();
+  const bin = binary();
+  if (!r || !bin) return null;
+  const env = def.env || currentEnv();
+  const port = def.port || state.port;
+  const args = lib.buildArgs(command, { env, port });
+  const exec = new vscode.ShellExecution(bin, args.map((value) => ({ value, quoting: vscode.ShellQuoting.Strong })), { cwd: r });
+  const task = new vscode.Task({ type: 'pneuma', command, env, port }, vscode.TaskScope.Workspace, `pneuma ${args.join(' ')}`, 'pneuma', exec, command === 'monitor' ? [] : ['$pneuma-gcc']);
+  task.presentationOptions = { reveal: vscode.TaskRevealKind.Always, clear: command === 'build' };
+  if (command === 'build') task.group = vscode.TaskGroup.Build;
+  return task;
+}
+
+function runTask(command) {
+  const t = taskFor(command);
+  if (t) vscode.tasks.executeTask(t);
+}
+
+/** Interactive things (monitor, tui, lib add...) go in a real terminal running the binary directly. */
+function runInTerminal(name, args, { hold = false } = {}) {
+  const bin = binary();
+  const r = root();
+  if (!bin || !r) return;
+  const term = vscode.window.createTerminal({ name, shellPath: bin, shellArgs: hold ? args.concat('--hold') : args, cwd: r });
+  terminals.push(term);
+  term.show();
+}
+
+async function pick(title, entries) {
+  const sel = await vscode.window.showQuickPick(entries, { title, placeHolder: title });
+  return sel;
+}
+
+const commands = {
+  'pneuma.build': () => runTask('build'),
+  'pneuma.upload': () => runTask('upload'),
+  'pneuma.run': () => runTask('run'),
+  'pneuma.monitor': () => runInTerminal('Pneuma Monitor', lib.buildArgs('monitor', { env: currentEnv(), port: state.port })),
+  'pneuma.selectEnv': async () => {
+    await refresh();
+    const names = state.info.envs.filter((e) => e.ok).map((e) => ({ label: e.name, description: `${e.board} · ${e.backend}` }));
+    const sel = await pick('Pneuma environment', names);
+    if (sel) {
+      state.env = sel.label;
+      updateStatus();
+    }
+  },
+  'pneuma.selectPort': async () => {
+    await refresh();
+    const entries = [{ label: 'auto', description: 'detect the single connected board' }].concat(state.info.ports.map((p) => ({ label: p.name, description: p.desc })));
+    const sel = await pick('Serial port', entries);
+    if (sel) {
+      state.port = sel.label;
+      const rem = state.info.remembered[sel.label];
+      if (rem) state.env = rem;
+      updateStatus();
+    }
+  },
+  'pneuma.new': async () => {
+    const bin = binary();
+    if (!bin) return;
+    const name = await vscode.window.showInputBox({ prompt: 'New project name', validateInput: (v) => (/^[\w.-]+$/.test(v || '') ? null : 'letters, digits, _ - . only') });
+    if (!name) return;
+    const dest = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, openLabel: 'Create here' });
+    if (!dest || !dest.length) return;
+    const parent = dest[0].fsPath;
+    cp.execFile(bin, ['new', name], { cwd: parent }, (err, stdout, stderr) => {
+      if (err) return vscode.window.showErrorMessage(`pneuma new failed: ${stderr || err.message}`);
+      vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(require('path').join(parent, name)));
+    });
+  },
+  'pneuma.addLibrary': async () => {
+    const n = await vscode.window.showInputBox({ prompt: 'Library name (Arduino registry), e.g. "DHT sensor library" or "Servo@1.2.1"' });
+    if (n) runInTerminal('Pneuma Library', ['lib', 'add', n], { hold: true });
+  },
+  'pneuma.searchLibrary': async () => {
+    const q = await vscode.window.showInputBox({ prompt: 'Search the Arduino library registry' });
+    if (q) runInTerminal('Pneuma Library', ['lib', 'search', q], { hold: true });
+  },
+  'pneuma.setup': () => runInTerminal('Pneuma Setup', ['setup'], { hold: true }),
+  'pneuma.openTui': () => runInTerminal('Pneuma', ['tui']),
+  'pneuma.refresh': () => refresh(),
+};
+
+function activate(context) {
+  for (const [id, fn] of Object.entries(commands)) context.subscriptions.push(vscode.commands.registerCommand(id, fn));
+
+  const mk = (key, priority, command) => {
+    const it = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, priority);
+    it.command = command;
+    items[key] = it;
+    context.subscriptions.push(it);
+    return it;
+  };
+  mk('env', 100, 'pneuma.selectEnv');
+  mk('port', 99, 'pneuma.selectPort');
+  mk('build', 98, 'pneuma.build').text = '$(check) Build';
+  mk('upload', 97, 'pneuma.upload').text = '$(cloud-upload) Upload';
+  mk('monitor', 96, 'pneuma.monitor').text = '$(plug) Monitor';
+  items.build.tooltip = 'Pneuma: build';
+  items.upload.tooltip = 'Pneuma: upload';
+  items.monitor.tooltip = 'Pneuma: serial monitor';
+
+  context.subscriptions.push(
+    vscode.tasks.registerTaskProvider('pneuma', {
+      provideTasks: () => ['build', 'upload', 'run'].map((c) => taskFor(c)).filter(Boolean),
+      resolveTask: (t) => (t.definition && t.definition.command ? taskFor(t.definition.command, t.definition) : undefined),
+    })
+  );
+
+  const w = vscode.workspace.createFileSystemWatcher('**/{pneuma.lua,bmu.lua,platformio.ini}');
+  for (const ev of ['onDidChange', 'onDidCreate', 'onDidDelete']) context.subscriptions.push(w[ev](() => refresh()));
+  context.subscriptions.push(w);
+  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((e) => e.affectsConfiguration('pneuma') && refresh()));
+
+  return refresh();
+}
+
+function deactivate() {
+  for (const t of terminals) {
+    try {
+      t.dispose();
+    } catch (e) {}
+  }
+}
+
+module.exports = { activate, deactivate, _state: state, _commands: commands };

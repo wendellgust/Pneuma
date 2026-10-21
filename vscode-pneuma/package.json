@@ -1,0 +1,170 @@
+{
+  "name": "pneuma",
+  "displayName": "Pneuma",
+  "description": "Build, upload and monitor microcontrollers (Arduino AVR, ESP32, RP2040) with the Pneuma CLI.",
+  "version": "0.1.0",
+  "publisher": "pneuma-dev",
+  "license": "Apache-2.0",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#0b1020",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "arduino",
+    "esp32",
+    "rp2040",
+    "microcontroller",
+    "platformio"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "workspaceContains:**/pneuma.lua",
+    "workspaceContains:**/bmu.lua",
+    "workspaceContains:**/platformio.ini",
+    "onCommand:pneuma.new"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "pneuma.build",
+        "title": "Pneuma: Build",
+        "icon": "$(check)"
+      },
+      {
+        "command": "pneuma.upload",
+        "title": "Pneuma: Upload",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "pneuma.run",
+        "title": "Pneuma: Build, Upload and Monitor",
+        "icon": "$(play)"
+      },
+      {
+        "command": "pneuma.monitor",
+        "title": "Pneuma: Serial Monitor",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "pneuma.selectEnv",
+        "title": "Pneuma: Select Environment"
+      },
+      {
+        "command": "pneuma.selectPort",
+        "title": "Pneuma: Select Port"
+      },
+      {
+        "command": "pneuma.new",
+        "title": "Pneuma: New Project"
+      },
+      {
+        "command": "pneuma.addLibrary",
+        "title": "Pneuma: Add Library"
+      },
+      {
+        "command": "pneuma.searchLibrary",
+        "title": "Pneuma: Search Libraries"
+      },
+      {
+        "command": "pneuma.setup",
+        "title": "Pneuma: Install Toolchain (AVR)"
+      },
+      {
+        "command": "pneuma.openTui",
+        "title": "Pneuma: Open Terminal UI"
+      },
+      {
+        "command": "pneuma.refresh",
+        "title": "Pneuma: Refresh Project Info"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "pneuma.build",
+        "key": "ctrl+alt+b",
+        "when": "pneuma.active"
+      },
+      {
+        "command": "pneuma.upload",
+        "key": "ctrl+alt+u",
+        "when": "pneuma.active"
+      },
+      {
+        "command": "pneuma.monitor",
+        "key": "ctrl+alt+m",
+        "when": "pneuma.active"
+      }
+    ],
+    "configuration": {
+      "title": "Pneuma",
+      "properties": {
+        "pneuma.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the pneuma binary or the pneuma.sh launcher. Empty: look in PATH, then ~/.cargo/bin."
+        },
+        "pneuma.statusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the Pneuma buttons in the status bar."
+        }
+      }
+    },
+    "taskDefinitions": [
+      {
+        "type": "pneuma",
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "build",
+              "upload",
+              "run",
+              "monitor"
+            ],
+            "description": "pneuma sub-command"
+          },
+          "env": {
+            "type": "string",
+            "description": "Environment (-e). Default: the one selected in the status bar."
+          },
+          "port": {
+            "type": "string",
+            "description": "Serial port (-p). Default: auto."
+          }
+        }
+      }
+    ],
+    "problemMatchers": [
+      {
+        "name": "pneuma-gcc",
+        "owner": "pneuma",
+        "fileLocation": [
+          "absolute"
+        ],
+        "pattern": {
+          "regexp": "^(.*?):(\\d+):(\\d+):\\s+(?:fatal )?(error|warning):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "test": "node --test test/",
+    "package": "npx --yes @vscode/vsce package"
+  }
+}

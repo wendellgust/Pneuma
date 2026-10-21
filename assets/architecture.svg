@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" width="960" height="520" role="img" aria-label="Pneuma architecture">
+  <defs>
+    <linearGradient id="ac" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#94a3b8"/></marker>
+    <style>
+      text{font-family:Inter,'Segoe UI',Helvetica,Arial,sans-serif;fill:#e2e8f0}
+      .t{font-size:20px;font-weight:700}.s{font-size:14px;fill:#94a3b8}
+      .box{fill:#111a33;stroke:#334155;stroke-width:2}
+      .hi{fill:#111a33;stroke:url(#ac);stroke-width:3}
+      .ln{stroke:#94a3b8;stroke-width:2;fill:none;marker-end:url(#ar)}
+    </style>
+  </defs>
+  <rect width="960" height="520" rx="24" fill="#0b1020"/>
+  <!-- front ends -->
+  <rect class="box" x="40" y="40" width="250" height="84" rx="14"/><text class="t" x="165" y="78" text-anchor="middle">VS Code extension</text><text class="s" x="165" y="102" text-anchor="middle">status bar · tasks · problems</text>
+  <rect class="box" x="355" y="40" width="250" height="84" rx="14"/><text class="t" x="480" y="78" text-anchor="middle">Terminal UI</text><text class="s" x="480" y="102" text-anchor="middle">ports · boards · monitor · plot</text>
+  <rect class="box" x="670" y="40" width="250" height="84" rx="14"/><text class="t" x="795" y="78" text-anchor="middle">pneuma CLI</text><text class="s" x="795" y="102" text-anchor="middle">new · build · upload · monitor</text>
+  <path class="ln" d="M165 124V150H340V176"/><path class="ln" d="M480 124V176"/><path class="ln" d="M795 124V150H620V176"/>
+  <!-- core -->
+  <rect class="hi" x="260" y="176" width="440" height="110" rx="16"/>
+  <text class="t" x="480" y="214" text-anchor="middle">pneuma-core (Rust)</text>
+  <text class="s" x="480" y="240" text-anchor="middle">pneuma.lua · libs · pause protocol · filters · remembered env</text>
+  <text class="s" x="480" y="262" text-anchor="middle">staging of src/ and libs/ into .pneuma/</text>
+  <path class="ln" d="M380 286V340"/><path class="ln" d="M580 286V340"/>
+  <!-- backends -->
+  <rect class="box" x="110" y="340" width="340" height="104" rx="14"/><text class="t" x="280" y="376" text-anchor="middle">Native backend (AVR)</text><text class="s" x="280" y="402" text-anchor="middle">platform.txt recipes · avr-gcc · avrdude</text><text class="s" x="280" y="424" text-anchor="middle">no arduino-cli · byte-identical output</text>
+  <rect class="box" x="510" y="340" width="340" height="104" rx="14"/><text class="t" x="680" y="376" text-anchor="middle">arduino-cli backend</text><text class="s" x="680" y="402" text-anchor="middle">ESP32 · ESP8266 · RP2040</text><text class="s" x="680" y="424" text-anchor="middle">lib add/search · debug</text>
+  <path class="ln" d="M280 444V476"/><path class="ln" d="M680 444V476"/>
+  <rect x="110" y="476" width="740" height="30" rx="15" fill="url(#ac)" fill-opacity=".18" stroke="url(#ac)" stroke-opacity=".7"/>
+  <text class="s" x="480" y="496" text-anchor="middle" style="fill:#e2e8f0">your board over USB serial</text>
+</svg>

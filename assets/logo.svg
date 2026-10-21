@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Pneuma logo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#312e81"/>
+    </linearGradient>
+    <linearGradient id="ac" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="58" fill="url(#bg)"/>
+  <!-- breath: two wind arcs around the chip -->
+  <path d="M34 92 C58 38 160 22 222 70" fill="none" stroke="url(#ac)" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+  <path d="M222 164 C198 218 96 234 34 186" fill="none" stroke="url(#ac)" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+  <!-- chip pins -->
+  <g stroke="url(#ac)" stroke-width="8" stroke-linecap="round">
+    <path d="M70 108H88M70 128H88M70 148H88"/>
+    <path d="M168 108H186M168 128H186M168 148H186"/>
+    <path d="M108 70V88M128 70V88M148 70V88"/>
+    <path d="M108 168V186M128 168V186M148 168V186"/>
+  </g>
+  <!-- chip body -->
+  <rect x="88" y="88" width="80" height="80" rx="14" fill="#0f172a" stroke="url(#ac)" stroke-width="8"/>
+  <!-- the P -->
+  <path d="M113 150V106H131A17 17 0 0 1 131 140H113" fill="none" stroke="url(#ac)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
