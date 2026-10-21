@@ -2,6 +2,16 @@
 
 Build, upload and monitor microcontrollers from VS Code with the Pneuma CLI.
 
+## Sidebar
+
+The Pneuma icon in the activity bar opens three views, like PlatformIO's:
+
+- **Project Tasks**: Quick Access (Build, Upload, Build+Upload+Monitor, Serial Monitor, Terminal UI), every environment with its own Build/Upload/Run/Monitor, and Tools (add/search library, install toolchain). Click an environment to select it.
+- **Ports**: pick a serial port or `auto`; shows the env that last worked on each port.
+- **Libraries**: folders in your `libs/`; click to reveal one. `+` and the search icon add from the registry.
+
+In a folder without `pneuma.lua` the sidebar offers **New Project**.
+
 ## Install
 
 1. Build the CLI: `cargo install --path crates/pneuma-cli --locked` (or set `pneuma.path` to `target/release/pneuma`).

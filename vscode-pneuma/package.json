@@ -66,11 +66,13 @@
       },
       {
         "command": "pneuma.addLibrary",
-        "title": "Pneuma: Add Library"
+        "title": "Pneuma: Add Library",
+        "icon": "$(add)"
       },
       {
         "command": "pneuma.searchLibrary",
-        "title": "Pneuma: Search Libraries"
+        "title": "Pneuma: Search Libraries",
+        "icon": "$(search)"
       },
       {
         "command": "pneuma.setup",
@@ -82,7 +84,12 @@
       },
       {
         "command": "pneuma.refresh",
-        "title": "Pneuma: Refresh Project Info"
+        "title": "Pneuma: Refresh Project Info",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "pneuma.revealLib",
+        "title": "Pneuma: Reveal Library"
       }
     ],
     "keybindings": [
@@ -161,7 +168,71 @@
           "message": 5
         }
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "pneuma",
+          "title": "Pneuma",
+          "icon": "media/pneuma.svg"
+        }
+      ]
+    },
+    "views": {
+      "pneuma": [
+        {
+          "id": "pneuma.tasks",
+          "name": "Project Tasks",
+          "when": "pneuma.active"
+        },
+        {
+          "id": "pneuma.ports",
+          "name": "Ports",
+          "when": "pneuma.active"
+        },
+        {
+          "id": "pneuma.libs",
+          "name": "Libraries",
+          "when": "pneuma.active"
+        },
+        {
+          "id": "pneuma.welcome",
+          "name": "Pneuma",
+          "when": "!pneuma.active"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "pneuma.welcome",
+        "contents": "No Pneuma project in this folder.\n[New Project](command:pneuma.new)\nAn existing project needs a pneuma.lua (run `pneuma init` in it).\n[Refresh](command:pneuma.refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "pneuma.refresh",
+          "when": "view == pneuma.tasks || view == pneuma.ports",
+          "group": "navigation"
+        },
+        {
+          "command": "pneuma.addLibrary",
+          "when": "view == pneuma.libs",
+          "group": "navigation@1"
+        },
+        {
+          "command": "pneuma.searchLibrary",
+          "when": "view == pneuma.libs",
+          "group": "navigation@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "pneuma.revealLib",
+          "when": "false"
+        }
+      ]
+    }
   },
   "scripts": {
     "test": "node --test test/",

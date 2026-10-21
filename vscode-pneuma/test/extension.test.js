@@ -12,8 +12,12 @@ const BIN = path.resolve(__dirname, '../../target/release/pneuma');
 const have = fs.existsSync(BIN);
 
 function makeVscode(project) {
-  const log = { registered: {}, tasks: [], terminals: [], bars: [], contexts: {}, watchers: 0 };
+  const log = { registered: {}, tasks: [], terminals: [], bars: [], contexts: {}, watchers: 0, trees: {} };
   const vscode = {
+    EventEmitter: class { constructor() { this.event = () => ({ dispose() {} }); } fire() { log.fired = (log.fired || 0) + 1; } },
+    TreeItem: class { constructor(label, state) { this.label = label; this.collapsibleState = state; } },
+    ThemeIcon: class { constructor(id) { this.id = id; } },
+    TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
     StatusBarAlignment: { Left: 1 },
     TaskScope: { Workspace: 2 },
     TaskGroup: { Build: 'build' },
@@ -29,6 +33,7 @@ function makeVscode(project) {
     window: {
       createStatusBarItem: () => { const it = { text: '', shown: false, show() { this.shown = true; }, hide() { this.shown = false; }, dispose() {} }; log.bars.push(it); return it; },
       createTerminal: (o) => { const t = { ...o, show() {}, dispose() {} }; log.terminals.push(t); return t; },
+      registerTreeDataProvider: (id, p) => { log.trees[id] = p; return { dispose() {} }; },
       showQuickPick: async (entries) => entries[0],
       showInputBox: async () => 'x',
       showErrorMessage: async () => undefined,
@@ -101,6 +106,29 @@ test('extension wiring against the real binary', { skip: !have && 'pneuma releas
   await log.registered['pneuma.addLibrary']();
   assert.deepStrictEqual(log.terminals.at(-1).shellArgs, ['lib', 'add', 'x', '--hold']);
 
+  // sidebar: three views; tasks lists envs, clicking an env's Upload runs it with THAT env
+  assert.deepStrictEqual(Object.keys(log.trees).sort(), ['pneuma.libs', 'pneuma.ports', 'pneuma.tasks']);
+  for (const v of pkg.contributes.views.pneuma.filter((v) => v.id !== 'pneuma.welcome')) assert.ok(log.trees[v.id], v.id);
+  await log.registered['pneuma.selectEnv']('uno');
+  const tasks = log.trees['pneuma.tasks'];
+  const groups = tasks.getChildren();
+  assert.deepStrictEqual(groups.map((g) => g.label), ['Quick Access', 'Environments', 'Tools']);
+  assert.strictEqual(tasks.getTreeItem(groups[0]).collapsibleState, 2);
+  const envNode = groups[1].children.find((e) => e.label === 'uno');
+  assert.ok(envNode.description.includes('selected'));
+  const item = tasks.getTreeItem(envNode.children[1]);
+  assert.deepStrictEqual(item.command, { command: 'pneuma.upload', title: 'Upload', arguments: ['uno'] });
+  ext._state.port = 'auto';
+  const other = groups[1].children.find((e) => e.label !== 'uno');
+  await log.registered['pneuma.upload'](other.label);
+  assert.deepStrictEqual(log.tasks.at(-1).execution.args.map((a) => a.value), ['upload', '-e', other.label]);
+  await log.registered['pneuma.selectEnv']('uno');
+  assert.ok(log.trees['pneuma.tasks'].getChildren()[1].children.find((e) => e.label === 'uno').description.includes('selected'));
+  assert.strictEqual(log.trees['pneuma.ports'].getChildren()[0].label, 'auto');
+  assert.ok(fs.existsSync(path.join(__dirname, '..', pkg.contributes.viewsContainers.activitybar[0].icon)));
+  fs.mkdirSync(path.join(project, 'libs', 'MyLib'), { recursive: true });
+  assert.deepStrictEqual(log.trees['pneuma.libs'].getChildren().map((n) => n.label), ['MyLib']);
+
   // a folder that is not a pneuma project hides the buttons
   const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'pneuma-empty-'));
   ext._state.info = { ok: false };
@@ -109,4 +137,5 @@ test('extension wiring against the real binary', { skip: !have && 'pneuma releas
   assert.ok(!i2.ok);
   assert.ok(log.bars.every((b) => !b.shown));
   assert.strictEqual(log.contexts['pneuma.active'], false);
+  assert.deepStrictEqual(log.trees['pneuma.tasks'].getChildren(), []);
 });

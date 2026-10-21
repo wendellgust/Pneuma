@@ -62,3 +62,18 @@ test('parseGccLine', () => {
   assert.strictEqual(lib.parseGccLine('Sketch uses 2124 bytes'), null);
   assert.strictEqual(lib.parseGccLine('/w/a.cpp:3:1: note: candidate'), null);
 });
+
+test('treeFor: tasks/ports/libs shapes and empty when not a project', () => {
+  const info = { ok: true, envs: [{ name: 'uno', ok: true, board: 'uno', backend: 'native' }, { name: 'bad', ok: false, error: 'no board' }], ports: [{ name: '/dev/ttyUSB0', desc: 'CH340' }], remembered: { '/dev/ttyUSB0': 'uno' } };
+  const t = lib.treeFor('tasks', { info, env: 'uno', port: 'auto' });
+  const envs = t.find((g) => g.id === 'g.envs').children;
+  assert.deepStrictEqual(envs[0].children.map((c) => c.label), ['Build', 'Upload', 'Build, Upload and Monitor', 'Serial Monitor']);
+  assert.deepStrictEqual(envs[0].children[0].args, ['uno']);
+  assert.strictEqual(envs[1].children, undefined);
+  assert.strictEqual(envs[1].description, 'no board');
+  const p = lib.treeFor('ports', { info, env: 'uno', port: '/dev/ttyUSB0' });
+  assert.deepStrictEqual(p.map((n) => n.label), ['auto', '/dev/ttyUSB0']);
+  assert.ok(p[1].description.includes('last env: uno'));
+  assert.deepStrictEqual(lib.treeFor('libs', { info, libDirs: ['A', 'B'] }).map((n) => n.label), ['A', 'B']);
+  assert.deepStrictEqual(lib.treeFor('tasks', { info: { ok: false, envs: [] } }), []);
+});

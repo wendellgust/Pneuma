@@ -28,6 +28,7 @@ function parseInfo(text) {
     error: p ? null : raw.project_error || 'no pneuma project here',
     version: raw.version,
     root: p ? p.root : null,
+    libsDir: p ? p.libs_dir : null,
     defaultEnv: p ? p.default_env : null,
     envs: p ? p.envs : [],
     ports: raw.ports || [],
@@ -67,4 +68,65 @@ function statusTexts(info, env, port) {
   };
 }
 
-module.exports = { resolveBinary, parseInfo, chooseEnv, buildArgs, parseGccLine, statusTexts };
+/**
+ * Sidebar trees as plain data: { id, label, description?, icon?, command?, args?, children? }.
+ * `view` is 'tasks' | 'ports' | 'libs'; `libDirs` = folder names found in the project's libs dir.
+ */
+function treeFor(view, { info, env, port, libDirs = [] }) {
+  const cmd = (id, label, command, icon, args) => ({ id, label, command, icon, args });
+  if (!info.ok) return [];
+  if (view === 'tasks') {
+    const quick = [
+      cmd('q.build', 'Build', 'pneuma.build', 'check'),
+      cmd('q.upload', 'Upload', 'pneuma.upload', 'cloud-upload'),
+      cmd('q.run', 'Build, Upload and Monitor', 'pneuma.run', 'play'),
+      cmd('q.monitor', 'Serial Monitor', 'pneuma.monitor', 'plug'),
+      cmd('q.tui', 'Terminal UI', 'pneuma.openTui', 'terminal'),
+    ];
+    const envs = info.envs.map((e) => {
+      const node = { id: `env.${e.name}`, label: e.name, icon: e.name === env ? 'pass-filled' : 'circuit-board' };
+      if (!e.ok) return { ...node, icon: 'warning', description: e.error || 'invalid environment' };
+      return {
+        ...node,
+        description: `${e.board} · ${e.backend}${e.name === env ? ' · selected' : ''}`,
+        command: 'pneuma.selectEnv',
+        args: [e.name],
+        children: [
+          cmd(`env.${e.name}.build`, 'Build', 'pneuma.build', 'check', [e.name]),
+          cmd(`env.${e.name}.upload`, 'Upload', 'pneuma.upload', 'cloud-upload', [e.name]),
+          cmd(`env.${e.name}.run`, 'Build, Upload and Monitor', 'pneuma.run', 'play', [e.name]),
+          cmd(`env.${e.name}.monitor`, 'Serial Monitor', 'pneuma.monitor', 'plug', [e.name]),
+        ],
+      };
+    });
+    const tools = [
+      cmd('t.addlib', 'Add Library', 'pneuma.addLibrary', 'add'),
+      cmd('t.searchlib', 'Search Libraries', 'pneuma.searchLibrary', 'search'),
+      cmd('t.setup', 'Install Toolchain (AVR)', 'pneuma.setup', 'cloud-download'),
+      cmd('t.refresh', 'Refresh', 'pneuma.refresh', 'refresh'),
+    ];
+    return [
+      { id: 'g.quick', label: 'Quick Access', icon: 'zap', children: quick },
+      { id: 'g.envs', label: 'Environments', icon: 'circuit-board', children: envs },
+      { id: 'g.tools', label: 'Tools', icon: 'tools', children: tools },
+    ];
+  }
+  if (view === 'ports') {
+    const auto = { id: 'p.auto', label: 'auto', icon: !port || port === 'auto' ? 'pass-filled' : 'circle-outline', description: 'detect the single connected board', command: 'pneuma.selectPort', args: ['auto'] };
+    const ports = info.ports.map((p) => ({
+      id: `p.${p.name}`,
+      label: p.name,
+      icon: p.name === port ? 'pass-filled' : 'plug',
+      description: [p.desc, info.remembered[p.name] ? `last env: ${info.remembered[p.name]}` : null].filter(Boolean).join(' · '),
+      command: 'pneuma.selectPort',
+      args: [p.name],
+    }));
+    return [auto].concat(ports);
+  }
+  if (view === 'libs') {
+    return libDirs.map((d) => ({ id: `l.${d}`, label: d, icon: 'library', command: 'pneuma.revealLib', args: [d] }));
+  }
+  return [];
+}
+
+module.exports = { treeFor, resolveBinary, parseInfo, chooseEnv, buildArgs, parseGccLine, statusTexts };

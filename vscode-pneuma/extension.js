@@ -3,6 +3,7 @@ const vscode = require('vscode');
 const cp = require('child_process');
 const fs = require('fs');
 const os = require('os');
+const path = require('path');
 const lib = require('./lib');
 
 const state = { info: { ok: false, envs: [], ports: [], remembered: {} }, env: null, port: 'auto', bin: null };
@@ -42,7 +43,44 @@ function currentEnv() {
   return lib.chooseEnv(state.info, state.env, state.port);
 }
 
+function libDirNames() {
+  const r = root();
+  if (!r || !state.info.ok) return [];
+  try {
+    const dir = path.join(r, state.info.libsDir || 'libs');
+    return fs.readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory() && !d.name.startsWith('.')).map((d) => d.name).sort();
+  } catch (e) {
+    return [];
+  }
+}
+
+/** One TreeDataProvider for the three sidebar views; the data comes from lib.treeFor. */
+class PneumaTree {
+  constructor(view) {
+    this.view = view;
+    this._emitter = new vscode.EventEmitter();
+    this.onDidChangeTreeData = this._emitter.event;
+  }
+  fire() {
+    this._emitter.fire();
+  }
+  getChildren(node) {
+    if (node) return node.children || [];
+    return lib.treeFor(this.view, { info: state.info, env: currentEnv(), port: state.port, libDirs: libDirNames() });
+  }
+  getTreeItem(n) {
+    const item = new vscode.TreeItem(n.label, n.children ? (n.id.startsWith('g.') ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed) : vscode.TreeItemCollapsibleState.None);
+    item.id = n.id;
+    if (n.description) item.description = n.description;
+    if (n.icon) item.iconPath = new vscode.ThemeIcon(n.icon);
+    if (n.command) item.command = { command: n.command, title: n.label, arguments: n.args || [] };
+    return item;
+  }
+}
+const trees = [];
+
 function updateStatus() {
+  for (const t of trees) t.fire();
   const show = vscode.workspace.getConfiguration('pneuma').get('statusBar') !== false;
   const t = lib.statusTexts(state.info, currentEnv(), state.port);
   items.env.text = t.env;
@@ -70,6 +108,8 @@ function refresh() {
   });
 }
 
+const asEnv = (v) => (typeof v === 'string' ? v : undefined);
+
 function taskFor(command, def = {}) {
   const r = root();
   const bin = binary();
@@ -84,8 +124,8 @@ function taskFor(command, def = {}) {
   return task;
 }
 
-function runTask(command) {
-  const t = taskFor(command);
+function runTask(command, env) {
+  const t = taskFor(command, { env });
   if (t) vscode.tasks.executeTask(t);
 }
 
@@ -105,11 +145,15 @@ async function pick(title, entries) {
 }
 
 const commands = {
-  'pneuma.build': () => runTask('build'),
-  'pneuma.upload': () => runTask('upload'),
-  'pneuma.run': () => runTask('run'),
-  'pneuma.monitor': () => runInTerminal('Pneuma Monitor', lib.buildArgs('monitor', { env: currentEnv(), port: state.port })),
-  'pneuma.selectEnv': async () => {
+  'pneuma.build': (env) => runTask('build', asEnv(env)),
+  'pneuma.upload': (env) => runTask('upload', asEnv(env)),
+  'pneuma.run': (env) => runTask('run', asEnv(env)),
+  'pneuma.monitor': (env) => runInTerminal('Pneuma Monitor', lib.buildArgs('monitor', { env: asEnv(env) || currentEnv(), port: state.port })),
+  'pneuma.selectEnv': async (name) => {
+    if (asEnv(name)) {
+      state.env = name;
+      return updateStatus();
+    }
     await refresh();
     const names = state.info.envs.filter((e) => e.ok).map((e) => ({ label: e.name, description: `${e.board} · ${e.backend}` }));
     const sel = await pick('Pneuma environment', names);
@@ -118,7 +162,13 @@ const commands = {
       updateStatus();
     }
   },
-  'pneuma.selectPort': async () => {
+  'pneuma.selectPort': async (name) => {
+    if (asEnv(name)) {
+      state.port = name;
+      const rem = state.info.remembered[name];
+      if (rem) state.env = rem;
+      return updateStatus();
+    }
     await refresh();
     const entries = [{ label: 'auto', description: 'detect the single connected board' }].concat(state.info.ports.map((p) => ({ label: p.name, description: p.desc })));
     const sel = await pick('Serial port', entries);
@@ -139,7 +189,7 @@ const commands = {
     const parent = dest[0].fsPath;
     cp.execFile(bin, ['new', name], { cwd: parent }, (err, stdout, stderr) => {
       if (err) return vscode.window.showErrorMessage(`pneuma new failed: ${stderr || err.message}`);
-      vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(require('path').join(parent, name)));
+      vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(path.join(parent, name)));
     });
   },
   'pneuma.addLibrary': async () => {
@@ -153,6 +203,10 @@ const commands = {
   'pneuma.setup': () => runInTerminal('Pneuma Setup', ['setup'], { hold: true }),
   'pneuma.openTui': () => runInTerminal('Pneuma', ['tui']),
   'pneuma.refresh': () => refresh(),
+  'pneuma.revealLib': (name) => {
+    const r = root();
+    if (r && asEnv(name)) vscode.commands.executeCommand('revealInExplorer', vscode.Uri.file(path.join(r, state.info.libsDir || 'libs', name)));
+  },
 };
 
 function activate(context) {
@@ -173,6 +227,12 @@ function activate(context) {
   items.build.tooltip = 'Pneuma: build';
   items.upload.tooltip = 'Pneuma: upload';
   items.monitor.tooltip = 'Pneuma: serial monitor';
+
+  for (const view of ['tasks', 'ports', 'libs']) {
+    const t = new PneumaTree(view);
+    trees.push(t);
+    context.subscriptions.push(vscode.window.registerTreeDataProvider(`pneuma.${view}`, t));
+  }
 
   context.subscriptions.push(
     vscode.tasks.registerTaskProvider('pneuma', {
@@ -197,4 +257,4 @@ function deactivate() {
   }
 }
 
-module.exports = { activate, deactivate, _state: state, _commands: commands };
+module.exports = { activate, deactivate, _state: state, _commands: commands, _trees: trees };
