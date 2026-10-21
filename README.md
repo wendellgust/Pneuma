@@ -18,7 +18,7 @@
 ## Quick start
 
 ```bash
-git clone <this repo> && cd pneuma
+git clone https://github.com/wendellgust/Pneuma.git && cd Pneuma
 ./pneuma.sh install          # puts `pneuma` in ~/.cargo/bin (needs Rust: https://rustup.rs)
 
 pneuma new blink && cd blink
