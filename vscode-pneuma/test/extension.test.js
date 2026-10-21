@@ -107,8 +107,8 @@ test('extension wiring against the real binary', { skip: !have && 'pneuma releas
   assert.deepStrictEqual(log.terminals.at(-1).shellArgs, ['lib', 'add', 'x', '--hold']);
 
   // sidebar: three views; tasks lists envs, clicking an env's Upload runs it with THAT env
-  assert.deepStrictEqual(Object.keys(log.trees).sort(), ['pneuma.libs', 'pneuma.ports', 'pneuma.tasks']);
-  for (const v of pkg.contributes.views.pneuma.filter((v) => v.id !== 'pneuma.welcome')) assert.ok(log.trees[v.id], v.id);
+  assert.deepStrictEqual(Object.keys(log.trees).sort(), ['pneuma.libs', 'pneuma.ports', 'pneuma.tasks', 'pneuma.welcome']);
+  for (const v of pkg.contributes.views.pneuma) assert.ok(log.trees[v.id], v.id);
   await log.registered['pneuma.selectEnv']('uno');
   const tasks = log.trees['pneuma.tasks'];
   const groups = tasks.getChildren();

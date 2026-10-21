@@ -2,7 +2,7 @@
   "name": "pneuma",
   "displayName": "Pneuma",
   "description": "Build, upload and monitor microcontrollers (Arduino AVR, ESP32, RP2040) with the Pneuma CLI.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "pneuma-dev",
   "license": "Apache-2.0",
   "icon": "icon.png",
@@ -28,7 +28,11 @@
     "workspaceContains:**/pneuma.lua",
     "workspaceContains:**/bmu.lua",
     "workspaceContains:**/platformio.ini",
-    "onCommand:pneuma.new"
+    "onCommand:pneuma.new",
+    "onView:pneuma.welcome",
+    "onView:pneuma.tasks",
+    "onView:pneuma.ports",
+    "onView:pneuma.libs"
   ],
   "contributes": {
     "commands": [
@@ -205,7 +209,13 @@
     "viewsWelcome": [
       {
         "view": "pneuma.welcome",
-        "contents": "No Pneuma project in this folder.\n[New Project](command:pneuma.new)\nAn existing project needs a pneuma.lua (run `pneuma init` in it).\n[Refresh](command:pneuma.refresh)"
+        "when": "pneuma.noBinary",
+        "contents": "The pneuma program was not found.\nBuild it with `./pneuma.sh install` (puts it in ~/.cargo/bin), or point the extension at it:\n[Open Pneuma Settings](command:workbench.action.openSettings?%5B%22pneuma.path%22%5D)\n[Try Again](command:pneuma.refresh)"
+      },
+      {
+        "view": "pneuma.welcome",
+        "when": "!pneuma.noBinary",
+        "contents": "No Pneuma project in this folder (needs a pneuma.lua).\n[New Project](command:pneuma.new)\nOr run `pneuma init` inside an existing project, then:\n[Refresh](command:pneuma.refresh)"
       }
     ],
     "menus": {

@@ -89,6 +89,7 @@ function updateStatus() {
   items.port.tooltip = 'Serial port — click to change';
   for (const it of Object.values(items)) (show && state.info.ok ? it.show() : it.hide());
   vscode.commands.executeCommand('setContext', 'pneuma.active', state.info.ok);
+  vscode.commands.executeCommand('setContext', 'pneuma.noBinary', !state.info.ok && !state.bin);
 }
 
 function refresh() {
@@ -228,7 +229,8 @@ function activate(context) {
   items.upload.tooltip = 'Pneuma: upload';
   items.monitor.tooltip = 'Pneuma: serial monitor';
 
-  for (const view of ['tasks', 'ports', 'libs']) {
+  // the welcome view needs a provider (always empty) or VS Code renders it blank
+  for (const view of ['tasks', 'ports', 'libs', 'welcome']) {
     const t = new PneumaTree(view);
     trees.push(t);
     context.subscriptions.push(vscode.window.registerTreeDataProvider(`pneuma.${view}`, t));
