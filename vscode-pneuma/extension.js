@@ -229,8 +229,7 @@ function activate(context) {
   items.upload.tooltip = 'Pneuma: upload';
   items.monitor.tooltip = 'Pneuma: serial monitor';
 
-  // the welcome view needs a provider (always empty) or VS Code renders it blank
-  for (const view of ['tasks', 'ports', 'libs', 'welcome']) {
+  for (const view of ['tasks', 'ports', 'libs']) {
     const t = new PneumaTree(view);
     trees.push(t);
     context.subscriptions.push(vscode.window.registerTreeDataProvider(`pneuma.${view}`, t));

@@ -2,7 +2,7 @@
   "name": "pneuma",
   "displayName": "Pneuma",
   "description": "Build, upload and monitor microcontrollers (Arduino AVR, ESP32, RP2040) with the Pneuma CLI.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "pneuma-dev",
   "license": "Apache-2.0",
   "icon": "icon.png",
@@ -29,7 +29,6 @@
     "workspaceContains:**/bmu.lua",
     "workspaceContains:**/platformio.ini",
     "onCommand:pneuma.new",
-    "onView:pneuma.welcome",
     "onView:pneuma.tasks",
     "onView:pneuma.ports",
     "onView:pneuma.libs"
@@ -186,36 +185,38 @@
       "pneuma": [
         {
           "id": "pneuma.tasks",
-          "name": "Project Tasks",
-          "when": "pneuma.active"
+          "name": "Project Tasks"
         },
         {
           "id": "pneuma.ports",
-          "name": "Ports",
-          "when": "pneuma.active"
+          "name": "Ports"
         },
         {
           "id": "pneuma.libs",
-          "name": "Libraries",
-          "when": "pneuma.active"
-        },
-        {
-          "id": "pneuma.welcome",
-          "name": "Pneuma",
-          "when": "!pneuma.active"
+          "name": "Libraries"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "pneuma.welcome",
+        "view": "pneuma.tasks",
         "when": "pneuma.noBinary",
         "contents": "The pneuma program was not found.\nBuild it with `./pneuma.sh install` (puts it in ~/.cargo/bin), or point the extension at it:\n[Open Pneuma Settings](command:workbench.action.openSettings?%5B%22pneuma.path%22%5D)\n[Try Again](command:pneuma.refresh)"
       },
       {
-        "view": "pneuma.welcome",
-        "when": "!pneuma.noBinary",
+        "view": "pneuma.tasks",
+        "when": "!pneuma.noBinary && !pneuma.active",
         "contents": "No Pneuma project in this folder (needs a pneuma.lua).\n[New Project](command:pneuma.new)\nOr run `pneuma init` inside an existing project, then:\n[Refresh](command:pneuma.refresh)"
+      },
+      {
+        "view": "pneuma.ports",
+        "when": "!pneuma.active",
+        "contents": "Open a Pneuma project to see serial ports."
+      },
+      {
+        "view": "pneuma.libs",
+        "when": "!pneuma.active",
+        "contents": "Open a Pneuma project to see its libraries."
       }
     ],
     "menus": {
