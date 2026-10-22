@@ -2,7 +2,7 @@
   "name": "pneuma",
   "displayName": "Pneuma",
   "description": "Build, upload and monitor microcontrollers (Arduino AVR, ESP32, RP2040) with the Pneuma CLI.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "pneuma-dev",
   "license": "Apache-2.0",
   "icon": "icon.png",
@@ -175,14 +175,14 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "pneuma",
+          "id": "pneumaBar",
           "title": "Pneuma",
           "icon": "media/pneuma.svg"
         }
       ]
     },
     "views": {
-      "pneuma": [
+      "pneumaBar": [
         {
           "id": "pneuma.tasks",
           "name": "Project Tasks"
