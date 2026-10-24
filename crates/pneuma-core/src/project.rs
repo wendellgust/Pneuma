@@ -154,12 +154,27 @@ fn load_lua(root: PathBuf, source: PathBuf) -> Result<Project> {
                     monitor_speed: e.get("monitor_speed").unwrap_or(global_monitor),
                     build_flags: flags,
                     lib_deps: strings(&e, "libs"),
+                    cmake: cmake_opts(&e),
                 })
             })();
             envs.push((n, r));
         }
     }
     Ok(Project { root, source, settings: st, envs })
+}
+
+/// `cmake_dir`, `cmake_args`, `cmake_target`, `pico_sdk`, `freertos`, `env_vars`, `upload_cmd` of an env.
+fn cmake_opts(e: &Table) -> Option<crate::cmake::CmakeOpts> {
+    let mut o = crate::cmake::CmakeOpts { source_dir: e.get("cmake_dir").unwrap_or_default(), args: strings(e, "cmake_args"), target: e.get("cmake_target").ok(), upload_cmd: strings(e, "upload_cmd"), ..Default::default() };
+    for (key, var) in [("pico_sdk", "PICO_SDK_PATH"), ("freertos", "FREERTOS_KERNEL_PATH")] {
+        if let Ok(v) = e.get::<String>(key) {
+            o.env_vars.push((var.into(), v));
+        }
+    }
+    if let Ok(t) = e.get::<Table>("env_vars") {
+        o.env_vars.extend(t.pairs::<String, String>().flatten());
+    }
+    Some(o)
 }
 
 pub fn default_platform(f: Family) -> &'static str {
@@ -337,5 +352,28 @@ mod tests {
         std::fs::write(d.join("platformio.ini"), "[env:a]\nplatform=p\nboard=uno\n").unwrap();
         let p = Project::load(&d).unwrap();
         assert_eq!(p.envs.len(), 1);
+    }
+}
+
+#[cfg(test)]
+mod cmake_tests {
+    use super::*;
+
+    #[test]
+    fn lua_cmake_env_keys() {
+        let d = std::env::temp_dir().join(format!("pneuma_proj_cmake_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        std::fs::write(d.join("CMakeLists.txt"), "").unwrap();
+        std::fs::write(d.join("pneuma.lua"), "return { env = { p = { board='pico', framework='cmake', cmake_args={'-DA=1'}, cmake_target='app', freertos='/fr', build_flags={'-Os'} } } }").unwrap();
+        let p = Project::load(&d).unwrap();
+        let e = p.envs[0].1.as_ref().unwrap();
+        let j = crate::cmake::job(&p, e).unwrap().unwrap();
+        assert_eq!(j.target.as_deref(), Some("app"));
+        assert!(j.env_vars.contains(&("FREERTOS_KERNEL_PATH".to_string(), "/fr".to_string())));
+        for want in ["-DA=1", "-DPICO_BOARD=pico", "-DCMAKE_C_FLAGS=-Os"] {
+            assert!(j.args.iter().any(|a| a == want), "{want} in {:?}", j.args);
+        }
+        assert!(j.build_dir.ends_with(".pneuma/build/p"));
     }
 }

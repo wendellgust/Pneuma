@@ -28,6 +28,8 @@ pneuma run                   # build + upload + open the monitor
 
 Or open the terminal UI with `pneuma` (press `h` for help, `5` for the Monitor tab). A ready-made LED test lives in [`examples/blink`](examples/blink).
 
+**CMake / FreeRTOS projects.** Already have a `CMakeLists.txt` (Pico SDK, FreeRTOS-Kernel, ...) that you build with Ninja? Set `framework = "cmake"` on the env in `pneuma.lua` and Pneuma runs `cmake -G Ninja` + the build into `.pneuma/build/<env>`, then uploads with `picotool` (or copies the `.uf2` to a mounted `RPI-RP2`). Other chips: give an `upload_cmd` with `{port} {elf} {uf2} {bin} {hex}` placeholders. Env keys: `cmake_dir`, `cmake_args`, `cmake_target`, `pico_sdk`, `freertos`, `env_vars`, `upload_cmd`. See [`examples/pico-freertos`](examples/pico-freertos). `./pneuma.sh install` asks whether to set up FreeRTOS (Pico SDK + FreeRTOS-Kernel in `~/.pneuma/sdk`); later use `pneuma setup --extras` (menu), `--freertos` or `--list`.
+
 > The CLI's own messages are in Portuguese for now; `pneuma --help` lists every command.
 
 ## Commands

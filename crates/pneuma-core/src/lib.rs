@@ -1,6 +1,8 @@
 pub mod boards;
 pub mod build;
+pub mod cmake;
 pub mod config;
+pub mod extras;
 pub mod filters;
 pub mod libs;
 pub mod monitor;

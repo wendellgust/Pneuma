@@ -393,6 +393,8 @@ fn stage_sketch(p: &Project, name: &str, dest: &Path) -> Result<()> {
 pub struct Plan {
     /// Set when the native AVR backend builds this plan (no arduino-cli).
     pub native: Option<crate::native::NativeJob>,
+    /// Set for `framework = "cmake"` envs (CMake + Ninja, no arduino-cli).
+    pub cmake: Option<crate::cmake::CmakeJob>,
     pub fqbn: String,
     pub sketch_dir: PathBuf,
     pub build_dir: PathBuf,
@@ -401,6 +403,9 @@ pub struct Plan {
 }
 
 pub fn prepare(p: &Project, env: &Env, scan: &Scan) -> Result<Plan> {
+    if let Some(job) = crate::cmake::job(p, env)? {
+        return Ok(Plan { native: None, cmake: Some(job.clone()), fqbn: "cmake".into(), sketch_dir: job.source_dir, build_dir: job.build_dir, libs: vec![], compile_args: vec![] });
+    }
     let work = work_dir(&p.root);
     let name = sketch_name(&p.root);
     let sketch_dir = work.join("sketch").join(&env.name).join(&name);
@@ -443,7 +448,7 @@ pub fn prepare(p: &Project, env: &Env, scan: &Scan) -> Result<Plan> {
         project_name: name.clone(),
     });
     set_remap(&p.root, &p.settings.src_dir, &p.settings.libs_dir);
-    Ok(Plan { native, fqbn: env.board.fqbn.into(), sketch_dir, build_dir, libs: chosen.iter().map(|l| l.name.clone()).collect(), compile_args: args })
+    Ok(Plan { native, cmake: None, fqbn: env.board.fqbn.into(), sketch_dir, build_dir, libs: chosen.iter().map(|l| l.name.clone()).collect(), compile_args: args })
 }
 
 /// Native backend for AVR unless disabled; a real `.ino` (needs prototype generation) needs arduino-cli.
@@ -484,6 +489,9 @@ pub fn ensure_native() -> Result<()> {
 }
 
 pub fn compile(plan: &Plan, board: &Board) -> Result<()> {
+    if let Some(c) = &plan.cmake {
+        return crate::cmake::compile(c);
+    }
     if let Some(n) = &plan.native {
         ensure_native()?;
         return crate::native::compile(n);
@@ -503,6 +511,9 @@ pub fn upload_args(plan: &Plan, port: &str) -> Vec<String> {
 }
 
 pub fn upload(plan: &Plan, port: &str) -> Result<()> {
+    if let Some(c) = &plan.cmake {
+        return crate::cmake::upload(c, port);
+    }
     if let Some(n) = &plan.native {
         return crate::native::upload(n, port);
     }
@@ -624,6 +635,7 @@ mod tests {
     fn debug_plan_uses_own_dir_and_flag() {
         let plan = Plan {
             native: None,
+            cmake: None,
             fqbn: "x:y:z".into(),
             sketch_dir: "/p/.pneuma/sketch/e/p".into(),
             build_dir: "/p/.pneuma/build/e".into(),
@@ -732,7 +744,7 @@ mod tests {
 
     #[test]
     fn upload_args_shape() {
-        let plan = Plan { native: None, fqbn: "arduino:avr:uno".into(), sketch_dir: "s".into(), build_dir: "/b".into(), libs: vec![], compile_args: vec![] };
+        let plan = Plan { native: None, cmake: None, fqbn: "arduino:avr:uno".into(), sketch_dir: "s".into(), build_dir: "/b".into(), libs: vec![], compile_args: vec![] };
         assert_eq!(upload_args(&plan, "/dev/ttyACM0"), ["upload", "-p", "/dev/ttyACM0", "--fqbn", "arduino:avr:uno", "--input-dir", "/b"]);
     }
 }

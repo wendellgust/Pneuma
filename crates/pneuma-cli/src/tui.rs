@@ -95,7 +95,7 @@ impl App {
     fn reload_project(&mut self) {
         self.project = Project::load(&self.path).map_err(|e| e.to_string());
         self.libs = match &self.project {
-            Ok(p) => libs::scan(&p.root, &p.settings.libs_dir, &p.settings.extra_libs).map_err(|e| e.to_string()),
+            Ok(p) => libs::scan_project(&p).map_err(|e| e.to_string()),
             Err(e) => Err(e.clone()),
         };
         let n = self.project.as_ref().map_or(0, |p| p.envs.len());
@@ -105,7 +105,7 @@ impl App {
         });
         let sel = self.envs_state.selected().or(def).unwrap_or(0).min(n.saturating_sub(1));
         self.envs_state.select((n > 0).then_some(sel));
-        let n = self.libs.as_ref().map_or(0, |s| s.libs.len());
+        let n = self.libs.as_ref().map_or(0, |s| s.libs.len() + s.external.len());
         let sel = self.libs_state.selected().unwrap_or(0).min(n.saturating_sub(1));
         self.libs_state.select((n > 0).then_some(sel));
     }
@@ -125,7 +125,7 @@ impl App {
                 self.envs_state.select(step(self.envs_state.selected(), n, delta));
             }
             3 => {
-                let n = self.libs.as_ref().map_or(0, |s| s.libs.len());
+                let n = self.libs.as_ref().map_or(0, |s| s.libs.len() + s.external.len());
                 self.libs_state.select(step(self.libs_state.selected(), n, delta));
             }
             _ => self.pane.scroll_by(-delta),
@@ -481,7 +481,8 @@ impl App {
             }
             Ok(s) => s,
         };
-        if scan.libs.is_empty() {
+        let all: Vec<(&libs::Lib, bool)> = scan.libs.iter().map(|l| (l, false)).chain(scan.external.iter().map(|l| (l, true))).collect();
+        if all.is_empty() {
             let msg = Paragraph::new(vec![
                 Line::raw(""),
                 Line::from("Nenhuma biblioteca.".yellow()),
@@ -493,15 +494,15 @@ impl App {
             return;
         }
         let [left, right] = Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)]).areas(area);
-        let items = scan.libs.iter().map(|l| Line::raw(l.name.clone()));
+        let items = all.iter().map(|(l, ext)| if *ext { Line::from(vec![Span::raw(l.name.clone()), " (cmake)".dim()]) } else { Line::raw(l.name.clone()) });
         let list = List::new(items)
-            .block(Self::panel(format!("Bibliotecas ({})", scan.libs.len())))
+            .block(Self::panel(format!("Bibliotecas ({})", all.len())))
             .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
             .highlight_symbol("▶ ");
         f.render_stateful_widget(list, left, &mut self.libs_state);
 
         let kv = |k: &str, v: String| Line::from(vec![format!("{k:<10}").dim(), Span::raw(v)]);
-        let mut d = match self.libs_state.selected().and_then(|i| scan.libs.get(i)) {
+        let mut d = match self.libs_state.selected().and_then(|i| all.get(i)).map(|(l, _)| *l) {
             None => vec![],
             Some(l) => {
                 let mut d = vec![

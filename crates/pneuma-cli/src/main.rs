@@ -15,7 +15,7 @@ const USAGE: &str = "uso: pneuma [comando] [dir] [opções]
   (nenhum) | tui [dir] [-p porta]  interface no terminal
   new <nome>                     cria um projeto novo com src/main.cpp de exemplo
   init [dir]                     cria pneuma.lua, libs/ e LIBS.md (projeto existente)
-  setup [--arduino-cli]          instala a toolchain AVR nativa em ~/.pneuma (sem arduino-cli);
+  setup [--arduino-cli|--list|--extras|--freertos]          instala a toolchain AVR nativa em ~/.pneuma (sem arduino-cli);
                                  --arduino-cli: instala o arduino-cli (ESP32, ESP8266, RP2040, lib add)
   build   [dir] [-e env]         compila
   upload  [dir] [-e env] [-p porta]
@@ -52,6 +52,9 @@ struct Args {
     all: bool,
     check: bool,
     arduino_cli: bool,
+    freertos: bool,
+    extras: bool,
+    list: bool,
     json: bool,
 }
 
@@ -78,6 +81,9 @@ fn parse(rest: Vec<String>) -> pneuma_core::Result<Args> {
             "--all" => a.all = true,
             "--check" => a.check = true,
             "--arduino-cli" => a.arduino_cli = true,
+            "--freertos" => a.freertos = true,
+            "--extras" => a.extras = true,
+            "--list" => a.list = true,
             "--json" => a.json = true,
             s if s.starts_with('-') => return Err(bad(format!("opção desconhecida: {s}"))),
             _ => a.pos.push(x),
@@ -112,16 +118,20 @@ fn pick_env<'a>(p: &'a Project, want: Option<&str>, port: Option<&str>) -> pneum
 }
 
 fn scan(p: &Project) -> pneuma_core::Result<libs::Scan> {
-    libs::scan(&p.root, &p.settings.libs_dir, &p.settings.extra_libs)
+    libs::scan_project(p)
 }
 
 fn do_build(p: &Project, env: &Env) -> pneuma_core::Result<build::Plan> {
     let s = scan(p)?;
-    for w in &s.warnings {
+    for w in s.warnings.iter().filter(|_| !pneuma_core::cmake::is_cmake_framework(env.framework.as_deref())) {
         println!("AVISO {w}");
     }
     let plan = build::prepare(p, env, &s)?;
-    println!("env {} · {} · libs: {}", env.name, plan.fqbn, if plan.libs.is_empty() { "-".into() } else { plan.libs.join(", ") });
+    if plan.cmake.is_some() {
+        println!("env {} · cmake+ninja · {}", env.name, plan.build_dir.display());
+    } else {
+        println!("env {} · {} · libs: {}", env.name, plan.fqbn, if plan.libs.is_empty() { "-".into() } else { plan.libs.join(", ") });
+    }
     build::compile(&plan, env.board)?;
     Ok(plan)
 }
@@ -129,6 +139,16 @@ fn do_build(p: &Project, env: &Env) -> pneuma_core::Result<build::Plan> {
 fn do_upload(plan: &build::Plan, env: &Env, port: Option<String>) -> pneuma_core::Result<String> {
     let port = match port.or(env.upload_port.clone()) {
         Some(x) => x,
+        // CMake/RP2040 uploads go over BOOTSEL/picotool: a serial port is optional there
+        None if plan.cmake.is_some() && env.board.family == pneuma_core::boards::Family::Rp2040 => {
+            let port = ports::auto_port().unwrap_or_default();
+            println!("enviando (picotool/BOOTSEL)...");
+            if port.is_empty() {
+                build::upload(plan, "")?;
+                return Ok(port);
+            }
+            port
+        }
         None => ports::auto_port()?,
     };
     // Ask running `pneuma monitor`s to let go of the port; they reopen it when `_pause` drops.
@@ -332,6 +352,9 @@ fn run() -> pneuma_core::Result<()> {
                     env.board.id, env.board.mcu
                 )));
             }
+            if pneuma_core::cmake::is_cmake_framework(env.framework.as_deref()) {
+                return Err(Error::Build("debug ainda não é suportado em envs cmake: use openocd/gdb direto no .elf de .pneuma/build/<env>".into()));
+            }
             build::ensure_core(env.board)?;
             if !build::debug_supported(env.board.fqbn, a.programmer.as_deref())? {
                 return Err(Error::Build(format!(
@@ -361,11 +384,15 @@ fn run() -> pneuma_core::Result<()> {
             for l in &s.libs {
                 println!("{:<24} {}  ({} src, {} hdr)", l.name, l.path.display(), l.sources.len(), l.headers.len());
             }
+            for l in &s.external {
+                println!("{:<24} {}  (cmake)", l.name, l.path.display());
+            }
             for w in &s.warnings {
                 println!("AVISO {w}");
             }
             println!("-> {}", md.display());
         }
+        "setup" if a.list || a.freertos || a.extras => setup_extras(&a)?,
         "setup" => {
             if a.arduino_cli {
                 let p = build::install_cli()?;
@@ -458,4 +485,48 @@ fn main() -> ExitCode {
         let _ = std::io::stdin().read_line(&mut String::new());
     }
     if failed { ExitCode::FAILURE } else { ExitCode::SUCCESS }
+}
+
+/// `setup --list | --freertos | --extras`: optional components (see pneuma_core::extras).
+fn setup_extras(a: &Args) -> pneuma_core::Result<()> {
+    use pneuma_core::extras;
+    let show = || {
+        for e in extras::EXTRAS {
+            println!("{:<10} [{}] {}\n           {}", e.id, if e.installed() { "instalado" } else { "não instalado" }, e.name, e.desc);
+        }
+    };
+    let mut chosen: Vec<&extras::Extra> = vec![];
+    if a.list {
+        show();
+        return Ok(());
+    }
+    if a.freertos {
+        chosen.extend(extras::find("freertos"));
+    }
+    if a.extras {
+        show();
+        let todo: Vec<&extras::Extra> = extras::EXTRAS.iter().filter(|e| !e.installed() && !chosen.iter().any(|c| c.id == e.id)).collect();
+        for e in todo {
+            print!("\nInstalar {}? [s/N] ", e.name);
+            let _ = std::io::Write::flush(&mut std::io::stdout());
+            let mut l = String::new();
+            let _ = std::io::stdin().read_line(&mut l);
+            if matches!(l.trim().to_lowercase().as_str(), "s" | "sim" | "y" | "yes") {
+                chosen.push(e);
+            }
+        }
+    }
+    for e in &chosen {
+        e.install()?;
+    }
+    if !chosen.is_empty() {
+        println!("\nSDKs em {} (pneuma usa PICO_SDK_PATH/FREERTOS_KERNEL_PATH daí se não definidos).", extras::sdk_dir().display());
+        match extras::compiler_hint() {
+            Some(h) => println!("Falta o compilador ARM. Rode: {h}"),
+            None => println!("arm-none-eabi-gcc encontrado. Exemplo: examples/pico-freertos"),
+        }
+    } else if a.extras {
+        println!("\nnada a instalar.");
+    }
+    Ok(())
 }

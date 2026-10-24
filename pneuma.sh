@@ -9,7 +9,8 @@
 #   ./pneuma.sh tui|check [dir|arquivo]
 #   ./pneuma.sh boards|ports
 #   ./pneuma.sh test             roda os testes
-#   ./pneuma.sh install          instala `pneuma` em ~/.cargo/bin
+#   ./pneuma.sh install          instala `pneuma` em ~/.cargo/bin (pergunta se quer FreeRTOS)
+#   ./pneuma.sh setup --extras   menu de extras (FreeRTOS...); --list mostra o estado
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
@@ -21,7 +22,19 @@ command -v cargo >/dev/null || { echo "erro: cargo não encontrado. Instale Rust
 
 case "${1:-}" in
   test)    exec cargo test --manifest-path "$ROOT/Cargo.toml" ;;
-  install) exec cargo install --path "$ROOT/crates/pneuma-cli" --locked ;;
+  install)
+    cargo install --path "$ROOT/crates/pneuma-cli" --locked
+    PNEUMA_BIN="${CARGO_HOME:-$HOME/.cargo}/bin/pneuma"
+    # Sempre pergunta (PNEUMA_FREERTOS=1/0 responde sem perguntar, p/ scripts).
+    ans="${PNEUMA_FREERTOS:-}"
+    if [ -z "$ans" ] && [ -t 0 ]; then
+      read -r -p "Instalar suporte a FreeRTOS (Pico SDK + FreeRTOS-Kernel, ~400 MB)? [s/N] " ans
+    fi
+    case "${ans,,}" in
+      s|sim|y|yes|1) "$PNEUMA_BIN" setup --freertos ;;
+      *) echo "Ok. Depois: pneuma setup --extras (menu) ou pneuma setup --list" ;;
+    esac
+    exit 0 ;;
 esac
 
 # cargo só recompila se necessário; silencioso quando já está atualizado.

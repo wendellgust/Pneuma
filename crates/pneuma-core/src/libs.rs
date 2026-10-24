@@ -30,6 +30,8 @@ pub struct Scan {
     pub root: PathBuf,
     pub libs_dir: PathBuf,
     pub libs: Vec<Lib>,
+    /// Libraries a CMake env links (SDK, FreeRTOS...): listed for the user, never staged.
+    pub external: Vec<Lib>,
     pub warnings: Vec<String>,
 }
 
@@ -127,6 +129,25 @@ pub fn scan(root: &Path, libs_dir: &str, extra: &[String]) -> Result<Scan> {
     Ok(s)
 }
 
+/// `scan` plus, for `framework = "cmake"` envs, the libraries their CMakeLists links.
+pub fn scan_project(p: &crate::project::Project) -> Result<Scan> {
+    let mut s = scan(&p.root, &p.settings.libs_dir, &p.settings.extra_libs)?;
+    for (_, e) in &p.envs {
+        let Ok(e) = e else { continue };
+        let Ok(Some(job)) = crate::cmake::job(p, e) else { continue };
+        for (name, path) in crate::cmake::linked_libs(&job) {
+            if s.external.iter().all(|l| l.name != name) {
+                let inc = path.join("include");
+                s.external.push(Lib { name, include_dirs: if inc.is_dir() { vec![inc] } else { vec![] }, path, sources: vec![], headers: vec![] });
+            }
+        }
+    }
+    if !s.external.is_empty() {
+        s.warnings.retain(|w| !w.starts_with("pasta de bibliotecas não existe"));
+    }
+    Ok(s)
+}
+
 impl Scan {
     fn rel(&self, p: &Path) -> String {
         p.strip_prefix(&self.root).unwrap_or(p).display().to_string()
@@ -167,6 +188,13 @@ impl Scan {
                 o.push_str(&format!("- Headers: {}{}\n", hs.join(", "), if more > 0 { format!(" (+{more})") } else { String::new() }));
             }
             o.push_str("- Uso no código: `#include <...>` relativo a um dos Include acima\n\n");
+        }
+        if !self.external.is_empty() {
+            o.push_str("## Via CMake\n\n| Biblioteca | Origem |\n|---|---|\n");
+            for l in &self.external {
+                o.push_str(&format!("| {} | `{}` |\n", l.name, l.path.display()));
+            }
+            o.push('\n');
         }
         o.push_str("## Avisos\n\n");
         if self.warnings.is_empty() {

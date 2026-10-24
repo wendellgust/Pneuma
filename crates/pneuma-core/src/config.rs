@@ -26,6 +26,8 @@ pub struct Env {
     pub monitor_speed: u32,
     pub build_flags: Vec<String>,
     pub lib_deps: Vec<String>,
+    /// CMake backend options (`framework = "cmake"`); only set from `pneuma.lua`.
+    pub cmake: Option<crate::cmake::CmakeOpts>,
 }
 
 impl Config {
@@ -124,6 +126,7 @@ impl Config {
             monitor_speed: m.get("monitor_speed").and_then(|s| s.parse().ok()).unwrap_or(9600),
             build_flags: list("build_flags"),
             lib_deps: list("lib_deps"),
+            cmake: None,
         })
     }
 }
