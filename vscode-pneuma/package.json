@@ -2,7 +2,7 @@
   "name": "pneuma",
   "displayName": "Pneuma",
   "description": "Build, upload and monitor microcontrollers (Arduino AVR, ESP32, RP2040) with the Pneuma CLI.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "pneuma-dev",
   "license": "Apache-2.0",
   "icon": "icon.png",
@@ -29,6 +29,8 @@
     "workspaceContains:**/bmu.lua",
     "workspaceContains:**/platformio.ini",
     "onCommand:pneuma.new",
+    "onCommand:pneuma.setupFreertos",
+    "onCommand:pneuma.setupExtras",
     "onView:pneuma.tasks",
     "onView:pneuma.ports",
     "onView:pneuma.libs"
@@ -80,6 +82,18 @@
       {
         "command": "pneuma.setup",
         "title": "Pneuma: Install Toolchain (AVR)"
+      },
+      {
+        "command": "pneuma.setupFreertos",
+        "title": "Pneuma: Install FreeRTOS (Pico SDK + FreeRTOS-Kernel)"
+      },
+      {
+        "command": "pneuma.setupExtras",
+        "title": "Pneuma: Install Extras (menu)"
+      },
+      {
+        "command": "pneuma.revealPath",
+        "title": "Pneuma: Reveal Library Folder"
       },
       {
         "command": "pneuma.openTui",
@@ -240,6 +254,10 @@
       "commandPalette": [
         {
           "command": "pneuma.revealLib",
+          "when": "false"
+        },
+        {
+          "command": "pneuma.revealPath",
           "when": "false"
         }
       ]

@@ -471,6 +471,9 @@ fn pick_native(p: &Project, env: &Env, sketch_dir: &Path) -> Result<bool> {
 
 /// Which backend a `build` for this env would use (for display; ignores the `.ino` fallback).
 pub fn backend_name(p: &Project, env: &Env) -> &'static str {
+    if crate::cmake::is_cmake_framework(env.framework.as_deref()) {
+        return "cmake";
+    }
     let want = std::env::var("PNEUMA_BACKEND").ok().or_else(|| p.settings.backend.clone()).unwrap_or_else(|| "auto".into());
     if want != "arduino-cli" && env.board.family == crate::boards::Family::Avr {
         "native"

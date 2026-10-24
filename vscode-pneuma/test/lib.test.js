@@ -75,5 +75,9 @@ test('treeFor: tasks/ports/libs shapes and empty when not a project', () => {
   assert.deepStrictEqual(p.map((n) => n.label), ['auto', '/dev/ttyUSB0']);
   assert.ok(p[1].description.includes('last env: uno'));
   assert.deepStrictEqual(lib.treeFor('libs', { info, libDirs: ['A', 'B'] }).map((n) => n.label), ['A', 'B']);
+  const cm = lib.treeFor('libs', { info: { ...info, cmakeLibs: [{ name: 'FreeRTOS-Kernel', path: '/sdk/fr' }] }, libDirs: ['A'] });
+  assert.deepStrictEqual(cm.map((n) => n.label), ['A', 'FreeRTOS-Kernel']);
+  assert.strictEqual(cm[1].description, 'cmake');
+  assert.deepStrictEqual(cm[1].args, ['/sdk/fr']);
   assert.deepStrictEqual(lib.treeFor('tasks', { info: { ok: false, envs: [] } }), []);
 });

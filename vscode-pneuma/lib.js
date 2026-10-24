@@ -29,6 +29,7 @@ function parseInfo(text) {
     version: raw.version,
     root: p ? p.root : null,
     libsDir: p ? p.libs_dir : null,
+    cmakeLibs: p ? p.cmake_libs || [] : [],
     defaultEnv: p ? p.default_env : null,
     envs: p ? p.envs : [],
     ports: raw.ports || [],
@@ -124,7 +125,9 @@ function treeFor(view, { info, env, port, libDirs = [] }) {
     return [auto].concat(ports);
   }
   if (view === 'libs') {
-    return libDirs.map((d) => ({ id: `l.${d}`, label: d, icon: 'library', command: 'pneuma.revealLib', args: [d] }));
+    const local = libDirs.map((d) => ({ id: `l.${d}`, label: d, icon: 'library', command: 'pneuma.revealLib', args: [d] }));
+    const viaCmake = (info.cmakeLibs || []).map((c) => ({ id: `c.${c.name}`, label: c.name, description: 'cmake', tooltip: c.path, icon: 'library', command: 'pneuma.revealPath', args: [c.path] }));
+    return local.concat(viaCmake);
   }
   return [];
 }

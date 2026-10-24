@@ -244,7 +244,7 @@ fn run() -> pneuma_core::Result<()> {
                             Ok(e) => serde_json::json!({
                                 "name": n, "ok": true, "board": e.board.id, "fqbn": e.board.fqbn,
                                 "family": format!("{:?}", e.board.family), "platform": e.platform,
-                                "monitor_speed": e.monitor_speed, "backend": build::backend_name(&p, e),
+                                "monitor_speed": e.monitor_speed, "backend": build::backend_name(&p, e), "framework": e.framework,
                             }),
                             Err(m) => serde_json::json!({ "name": n, "ok": false, "error": m }),
                         })
@@ -253,7 +253,11 @@ fn run() -> pneuma_core::Result<()> {
                         .into_iter()
                         .filter_map(|po| state::last_env(&p.root, &po.id).map(|e| (po.name, serde_json::Value::String(e))))
                         .collect();
+                    let cmake_libs: Vec<serde_json::Value> = libs::scan_project(&p)
+                        .map(|s| s.external.iter().map(|l| serde_json::json!({ "name": l.name, "path": l.path })).collect())
+                        .unwrap_or_default();
                     v["project"] = serde_json::json!({
+                        "cmake_libs": cmake_libs,
                         "root": p.root, "source": p.source, "default_env": p.settings.default_env,
                         "src_dir": p.settings.src_dir, "libs_dir": p.settings.libs_dir,
                         "envs": envs, "remembered_env_by_port": remembered,

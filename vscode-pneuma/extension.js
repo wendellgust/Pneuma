@@ -131,9 +131,9 @@ function runTask(command, env) {
 }
 
 /** Interactive things (monitor, tui, lib add...) go in a real terminal running the binary directly. */
-function runInTerminal(name, args, { hold = false } = {}) {
+function runInTerminal(name, args, { hold = false, anyDir = false } = {}) {
   const bin = binary();
-  const r = root();
+  const r = root() || (anyDir ? require('os').homedir() : null);
   if (!bin || !r) return;
   const term = vscode.window.createTerminal({ name, shellPath: bin, shellArgs: hold ? args.concat('--hold') : args, cwd: r });
   terminals.push(term);
@@ -202,6 +202,9 @@ const commands = {
     if (q) runInTerminal('Pneuma Library', ['lib', 'search', q], { hold: true });
   },
   'pneuma.setup': () => runInTerminal('Pneuma Setup', ['setup'], { hold: true }),
+  'pneuma.setupFreertos': () => runInTerminal('Pneuma FreeRTOS', ['setup', '--freertos'], { hold: true, anyDir: true }),
+  'pneuma.setupExtras': () => runInTerminal('Pneuma Extras', ['setup', '--extras'], { hold: true, anyDir: true }),
+  'pneuma.revealPath': (p) => p && vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(p)),
   'pneuma.openTui': () => runInTerminal('Pneuma', ['tui']),
   'pneuma.refresh': () => refresh(),
   'pneuma.revealLib': (name) => {
